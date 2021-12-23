@@ -1,0 +1,261 @@
+<script type ="text/javascript">
+
+    let deck_id;
+    let player_position = 1
+    let dealer_position = 1
+    let dealer_cards =[]
+    let player_cards =[]
+    let dealer_total = 0
+    let player_total = 0
+
+    let p_allowed = 1
+    let d_allowed = 1
+
+    //function to execute get requests from my project1
+    async function requests(url) {
+        const json = await fetch(url)
+                  .then(response => response.json());
+    
+        return json
+    }
+
+    //function to determine total of players cards
+    function total(card_arr){
+
+        let total = 0;
+
+        for(let i = 0; i<card_arr[0].length;i++){
+            if(card_arr[0][i].value =='2'){
+                total +=2;
+            }
+            else if(card_arr[0][i].value =='3'){
+                total +=3;
+            }
+            else if(card_arr[0][i].value =='4'){
+                total +=4;
+            }
+            else if(card_arr[0][i].value =='5'){
+                total +=5;
+            }
+            else if(card_arr[0][i].value =='6'){
+                total +=6;
+            }
+            else if(card_arr[0][i].value =='7'){
+                total +=7;
+            }
+            else if(card_arr[0][i].value =='8'){
+                total +=8;
+            }   
+            else if(card_arr[0][i].value =='9'){
+                total +=9;
+            }
+            else{
+                total +=10
+            }
+        }
+
+        return total;
+    }
+
+    function resetDisplays(card_arr, user){
+
+        for(let i=0 ; i<card_arr[0].length; i++){
+            current = document.getElementById(user+(i+1));
+            current.removeChild(current.lastElementChild);
+        }
+    }
+    
+    //function to correct a UI bug that appeared when you win
+    function dealerUIBug(card_arr, user){
+
+        for(let i=0 ; i<card_arr[0].length-1; i++){
+            current = document.getElementById(user+(i+1));
+            current.removeChild(current.lastElementChild);
+        }
+    }   
+
+    //updating the cards in the blackjack game
+    function updateDisplays(card_arr, user){
+        
+        let image;
+        for(let i=0 ; i<card_arr[0].length; i++){
+            current = document.getElementById(user+(i+1));
+            var dom_img = document.createElement("img")
+            dom_img.src = card_arr[0][i].image
+            dom_img.width ="85"
+            dom_img.height= "150"
+            current.appendChild(dom_img)
+        }
+
+    }
+
+    async function playerStand(){
+
+        let moves = 0
+
+        if(d_allowed ==0 || p_allowed==0){
+            return
+        }
+
+        resetDisplays(dealer_cards, "dealer")
+        let card_draw;
+
+        while(d_allowed == 1 && dealer_total<17){
+            
+            moves++;
+            //drawing the first two cards for the user and updating the totals 
+            card_draw = await requests("http://deckofcardsapi.com/api/deck/"+deck_id+"/draw/?count=1")
+            dealer_cards[0].push(card_draw.cards[0])
+
+            dealer_total = total(dealer_cards)
+            updateDisplays(dealer_cards, "dealer")
+            let tmp = document.getElementById("dealertotal").innerHTML ="Dealer has: "+dealer_total
+
+            console.log(dealer_total)
+            
+            //checking dealer count
+            if(dealer_total>21){
+                d_allowed = 0;
+                p_allowed = 0
+
+                confirm("YOU WON OVER MY DUMB NPC. Let me give you a medal!")
+                dealerUIBug(dealer_cards, "dealer")
+                return;
+            }
+        }
+
+        p_allowed=0;
+        d_allowed=0;
+
+        //win conditions
+        if (dealer_total < player_total){
+            
+            if(moves>0){
+                dealerUIBug(dealer_cards, "dealer")
+            }
+            confirm("YOU WON OVER MY DUMB NPC. Let me give you a medal!")
+            return
+            
+        }
+        else if (dealer_total == player_total){
+            if(moves>0){
+                dealerUIBug(dealer_cards, "dealer")
+            }
+            confirm("TIE. BIG SAD")
+            return
+        }  
+        else{
+            if(moves>0){
+                dealerUIBug(dealer_cards, "dealer")
+            }
+            confirm("YOU LOST. BOUHOU!")
+            return
+        }
+        
+      
+    }
+
+    //function to check whether player can hit or not
+    async function playerHit(){
+
+        if(p_allowed == 1){
+
+            resetDisplays(player_cards, "player")
+            //drawing the first two cards for the user and updating the totals 
+            let card_draw = await requests("http://deckofcardsapi.com/api/deck/"+deck_id+"/draw/?count=1")
+            player_cards[0].push(card_draw.cards[0])
+            console.log("1")
+            
+            player_total = total(player_cards)
+            updateDisplays(player_cards, "player")
+            let tmp = document.getElementById("playertotal").innerHTML ="You have: "+player_total
+            console.log("2")
+
+            if(player_total>21){
+                p_allowed = 0
+
+                confirm("YOU LOST. BOUHOU!")
+            }
+        }
+    }
+
+    //function that takes care of starting a new game
+    async function newGame(){
+        
+        let tmp;
+        //resetting every variable in the game
+        if(player_total !=0){
+
+            resetDisplays(player_cards,"player")
+            resetDisplays(dealer_cards,"dealer")
+            dealer_total = 0
+            player_total = 0
+            tmp = document.getElementById("playertotal").innerHTML ="You have: "+player_total;
+            tmp = document.getElementById("dealertotal").innerHTML ="Dealer has: "+dealer_total
+            p_allowed = 1
+            d_allowed = 1      
+
+        }
+
+        //resetting game variables
+        dealer_total = 0
+        player_total = 0
+        player_cards = []
+        dealer_cards = []
+
+        //creating new deck, drawing two cards and updating the totals
+        let start_game_call = await requests("http://deckofcardsapi.com/api/deck/new/shuffle/?cards=2S,3S,4S,5S,6S,7S,8S,9S,KS,QS,JS,2D,3D,4D,5D,6D,7D,8D,9D,KD,QD,JD,2C,3C,4C,5C,6C,7C,8C,9C,KC,QC,JC,2H,3H,4H,5H,6H,7H,8H,9H,KH,QH,JH")
+        deck_id = start_game_call.deck_id;
+        console.log(deck_id)
+
+        //drawing the first two cards for the user and then updating the totals
+        let card_draw = await requests("http://deckofcardsapi.com/api/deck/"+deck_id+"/draw/?count=2")
+        player_cards.push(card_draw.cards)
+        console.log(player_cards)
+        player_total = total(player_cards)
+        updateDisplays(player_cards, "player")
+        tmp = document.getElementById("playertotal").innerHTML ="You have: "+player_total
+
+        //drawing the first two cards for the user and updating the totals 
+        card_draw = await requests("http://deckofcardsapi.com/api/deck/"+deck_id+"/draw/?count=2");
+        dealer_cards.push(card_draw.cards);
+        console.log(dealer_cards);
+        dealer_total = total(dealer_cards);
+        updateDisplays(dealer_cards, "dealer");
+        tmp = document.getElementById("dealertotal").innerHTML ="Dealer has: "+dealer_total;
+
+    } 
+
+</script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<body style="background-color: #280;">
+    <div align="center">
+    <h1 class="display-3">Welcome to Blackjack!</h1>
+    <h3 class="display-5">Click "New Game" to Begin.</h3>
+    <button type="button" id ="hit" onclick= "playerHit()" class="btn btn-danger">Hit</button>
+    <button type="button" id = "stand" onclick ="playerStand()" class="btn btn-danger">Stand</button>
+    <button type="button" id = "newsGame" onclick= "newGame()" class="btn btn-danger">New Game</button>
+    <div>
+
+    <table align="center" cellpadding="0" cellspacing="10" border="0;" style="margin-top:50px">
+    <tbody><tr><td>
+    <div style="position: relative; border: thick solid #000; background-color: #280; width: 590px; height:500px">
+        <div style="position: absolute; left:20px; top:15px; color:#FFF; font-size:large">Dealer's cards:</div>
+        <div id="dealer1" style="position: absolute; left: 50px; top: 50px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="dealer2" style="position: absolute; left: 150px; top: 50px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="dealer3" style="position: absolute; left: 250px; top: 50px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="dealer4" style="position: absolute; left: 350px; top: 50px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="dealer5" style="position: absolute; left: 450px; top: 50px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        
+        <div style="position: absolute; left:20px; top:210px; color:#FFF; font-size:large">Your cards:</div>
+        <div id="player1" style="position: absolute; left: 50px; top: 250px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="player2" style="position: absolute; left: 150px; top: 250px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="player3" style="position: absolute; left: 250px; top: 250px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="player4" style="position: absolute; left: 350px; top: 250px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+        <div id="player5" style="position: absolute; left: 450px; top: 250px; border: 2px solid rgb(1, 34, 31); background-color: rgb(180, 6, 0); width: 90px; height: 150px;"><div style="position: relative; width: 90px; height: 150px; left: 0px; top: 0px; display: none;"><img src="" style="position: absolute; width: 1027px; height: 615px; left: -158px; top: -492px; clip: rect(492px, 237px, 615px, 158px);"></div></div>
+    </div>
+    </td></tr>
+    </tbody></table>
+    <div id = "playertotal" style="position: absolute; right:550px; top: 420px; color:#FFF; font-size:large">You have:</div>
+    <div id = "dealertotal" style="position: absolute; right:550px; top: 240px; color:#FFF; font-size:large">Dealer has:</div>
+</body>
